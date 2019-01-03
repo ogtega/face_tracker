@@ -74,9 +74,8 @@ int main(int, char **)
 
 bool detect(Mat &frame, double conf, Rect2d &bbox)
 {
-    cout << "*";
     //--- LOAD HUMAN FACE CLASSIFIER
-    cv::CascadeClassifier face_model("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt.xml");
+    cv::CascadeClassifier face_model("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_default.xml");
 
     Mat gray;
     vector<int> levels;
