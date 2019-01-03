@@ -51,7 +51,7 @@ int main(int, char **)
 
         if (bbox.area() <= 0)
         {
-            if (detect(frame, 1.24, bbox))
+            if (detect(frame, 2, bbox))
             {
                 tracker = TrackerKCF::create();
                 tracker->init(frame, bbox);
@@ -75,9 +75,11 @@ int main(int, char **)
 bool detect(Mat &frame, double conf, Rect2d &bbox)
 {
     //--- LOAD HUMAN FACE CLASSIFIER
-    cv::CascadeClassifier face_model("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_default.xml");
+    cv::CascadeClassifier face_model("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
 
     Mat gray;
+    int indx = 0;
+    double max = 0.0;
     vector<int> levels;
     vector<double> weights;
     vector<Rect_<int>> faces;
@@ -86,11 +88,14 @@ bool detect(Mat &frame, double conf, Rect2d &bbox)
 
     for (int i = 0; i < faces.size(); i++)
     {
-        if (weights[i] > conf)
-        {
-            bbox = Rect2d(faces[i].x, faces[i].y, faces[i].width, faces[i].height);
-            return true;
-        }
+        indx = (max >= weights[i]) ? indx : i;
+        max = (max >= weights[i]) ? max : weights[i];
+    }
+
+    if(max > conf) {
+        bbox = Rect2d(faces[indx].x, faces[indx].y, faces[indx].width, faces[indx].height);
+        return true;
+
     }
 
     return false;
