@@ -34,7 +34,7 @@ int main(int, char **)
     Rect2d bbox = Rect2d(0, 0, 0, 0);
 
     //--- LOAD HUMAN FACE CLASSIFIERS
-    cv::CascadeClassifier face_model("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
+    cv::CascadeClassifier face_model("/usr/local/share/opencv4/lbpcascades/lbpcascade_frontalface_improved.xml");
 
     //--- GRAB AND WRITE LOOP
     cout << "Start grabbing" << endl
