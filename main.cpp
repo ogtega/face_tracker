@@ -2,16 +2,16 @@
 #include <iostream>
 
 #include <opencv2/core.hpp>
-#include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/videoio.hpp>
 #include <opencv2/tracking.hpp>
 #include <opencv2/objdetect.hpp>
 
 using namespace cv;
 using namespace std;
 
-bool detect(Mat &frame, double conf, Rect2d &bbox);
+bool detect(Mat &frame, double conf, Rect2d &bbox, CascadeClassifier &face_model);
 
 int main(int, char **)
 {
@@ -33,6 +33,9 @@ int main(int, char **)
     Ptr<Tracker> tracker;
     Rect2d bbox = Rect2d(0, 0, 0, 0);
 
+    //--- LOAD HUMAN FACE CLASSIFIERS
+    cv::CascadeClassifier face_model("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
+
     //--- GRAB AND WRITE LOOP
     cout << "Start grabbing" << endl
          << "Press 'esc' key to terminate" << endl;
@@ -50,7 +53,7 @@ int main(int, char **)
 
         if (bbox.area() <= 0)
         {
-            if (detect(frame, 1.24, bbox))
+            if (detect(frame, 1.24, bbox, face_model))
             {
                 tracker = TrackerKCF::create();
                 tracker->init(frame, bbox);
@@ -71,11 +74,8 @@ int main(int, char **)
     return 0;
 }
 
-bool detect(Mat &frame, double conf, Rect2d &bbox)
+bool detect(Mat &frame, double conf, Rect2d &bbox, CascadeClassifier &face_model)
 {
-    //--- LOAD HUMAN FACE CLASSIFIERS
-    cv::CascadeClassifier face_model("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
-
     Mat gray;
     int indx = 0;
     double max = 0.0;
@@ -85,10 +85,13 @@ bool detect(Mat &frame, double conf, Rect2d &bbox)
     cv::cvtColor(frame, gray, COLOR_BGR2GRAY);
     face_model.detectMultiScale(gray, faces, levels, weights, 1.100000000000000089, 3, 0, Size(), Size(), true);
 
-    for (int i = 0; i < faces.size(); i++)
+    if (faces.size() > 1)
     {
-        indx = (max >= weights[i]) ? indx : i;
-        max = (max >= weights[i]) ? max : weights[i];
+        for (int i = 0; i < faces.size(); i++)
+        {
+            indx = (max >= weights[i]) ? indx : i;
+            max = (max >= weights[i]) ? max : weights[i];
+        }
     }
 
     if (max >= conf)
