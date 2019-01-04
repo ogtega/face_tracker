@@ -1,17 +1,18 @@
 #include <stdio.h>
 #include <iostream>
 
+#include <opencv2/dnn.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/tracking.hpp>
 #include <opencv2/objdetect.hpp>
 
 using namespace cv;
 using namespace std;
+using namespace dnn;
 
-bool detect(Mat &frame, double conf, Rect2d &bbox, CascadeClassifier &face_model);
+bool detect(Mat &frame, double conf, Rect2d &bbox, Net &net);
 
 int main(int, char **)
 {
@@ -33,8 +34,8 @@ int main(int, char **)
     Ptr<Tracker> tracker;
     Rect2d bbox = Rect2d(0, 0, 0, 0);
 
-    //--- LOAD HUMAN FACE CLASSIFIERS
-    cv::CascadeClassifier face_model("/usr/local/share/opencv4/lbpcascades/lbpcascade_frontalface_improved.xml");
+    //--- LOAD HUMAN FACE CLASSIFYING NETWORK
+    Net net = readNetFromCaffe("caffe/deploy.prototxt", "caffe/model.caffemodel");
 
     //--- GRAB AND WRITE LOOP
     cout << "Start grabbing" << endl
@@ -53,7 +54,7 @@ int main(int, char **)
 
         if (bbox.area() <= 0)
         {
-            if (detect(frame, 1.24, bbox, face_model))
+            if (detect(frame, .5, bbox, net))
             {
                 tracker = TrackerKCF::create();
                 tracker->init(frame, bbox);
@@ -74,30 +75,29 @@ int main(int, char **)
     return 0;
 }
 
-bool detect(Mat &frame, double conf, Rect2d &bbox, CascadeClassifier &face_model)
+bool detect(Mat &frame, double conf, Rect2d &bbox, Net &net)
 {
-    Mat gray;
-    int indx = 0;
-    double max = 0.0;
-    vector<int> levels;
-    vector<double> weights;
-    vector<Rect_<int>> faces;
-    cv::cvtColor(frame, gray, COLOR_BGR2GRAY);
-    face_model.detectMultiScale(gray, faces, levels, weights, 1.100000000000000089, 3, 0, Size(), Size(), true);
+    double confidence;
+    Mat blob = blobFromImage(frame, 1.0, Size(300, 300), Scalar(104, 117, 123), false, false);
 
-    if (faces.size() > 1)
+    net.setInput(blob, "data");
+    Mat output = net.forward("detection_out");
+    Mat detections(output.size[2], output.size[3], CV_32F, output.ptr<float>());
+
+    for (int i = 0; i < detections.rows; i++)
     {
-        for (int i = 0; i < faces.size(); i++)
+        float confidence = detections.at<float>(i, 2);
+
+        if (confidence > conf)
         {
-            indx = (max >= weights[i]) ? indx : i;
-            max = (max >= weights[i]) ? max : weights[i];
-        }
-    }
+            int x1 = static_cast<int>(detections.at<float>(i, 3) * frame.cols);
+            int y1 = static_cast<int>(detections.at<float>(i, 4) * frame.rows);
+            int x2 = static_cast<int>(detections.at<float>(i, 5) * frame.cols);
+            int y2 = static_cast<int>(detections.at<float>(i, 6) * frame.rows);
 
-    if (max >= conf)
-    {
-        bbox = Rect2d(faces[indx].x, faces[indx].y, faces[indx].width, faces[indx].height);
-        return true;
+            bbox = Rect2d(x1, y1, x2 - x1, y2 - y1);
+            return true;
+        }
     }
 
     return false;
