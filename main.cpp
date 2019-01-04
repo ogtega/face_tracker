@@ -31,7 +31,6 @@ int main(int, char **)
     }
 
     Ptr<Tracker> tracker;
-    tracker = TrackerKCF::create();
     Rect2d bbox = Rect2d(0, 0, 0, 0);
 
     //--- GRAB AND WRITE LOOP
@@ -51,7 +50,7 @@ int main(int, char **)
 
         if (bbox.area() <= 0)
         {
-            if (detect(frame, 2, bbox))
+            if (detect(frame, 1.24, bbox))
             {
                 tracker = TrackerKCF::create();
                 tracker->init(frame, bbox);
@@ -74,7 +73,7 @@ int main(int, char **)
 
 bool detect(Mat &frame, double conf, Rect2d &bbox)
 {
-    //--- LOAD HUMAN FACE CLASSIFIER
+    //--- LOAD HUMAN FACE CLASSIFIERS
     cv::CascadeClassifier face_model("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
 
     Mat gray;
@@ -84,7 +83,7 @@ bool detect(Mat &frame, double conf, Rect2d &bbox)
     vector<double> weights;
     vector<Rect_<int>> faces;
     cv::cvtColor(frame, gray, COLOR_BGR2GRAY);
-    face_model.detectMultiScale(gray, faces, levels, weights, 1.1, 3, 0, Size(), Size(), true);
+    face_model.detectMultiScale(gray, faces, levels, weights, 1.100000000000000089, 3, 0, Size(), Size(), true);
 
     for (int i = 0; i < faces.size(); i++)
     {
@@ -92,10 +91,10 @@ bool detect(Mat &frame, double conf, Rect2d &bbox)
         max = (max >= weights[i]) ? max : weights[i];
     }
 
-    if(max > conf) {
+    if (max >= conf)
+    {
         bbox = Rect2d(faces[indx].x, faces[indx].y, faces[indx].width, faces[indx].height);
         return true;
-
     }
 
     return false;
