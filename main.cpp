@@ -12,7 +12,7 @@ using namespace cv;
 using namespace std;
 using namespace dnn;
 
-bool detect(Mat &frame, double conf, Rect2d &bbox, Net &net);
+bool detect(Mat &frame, float conf, Rect2d &bbox, Net &net);
 
 int main(int, char **)
 {
@@ -41,7 +41,7 @@ int main(int, char **)
     cout << "Start grabbing" << endl
          << "Press 'esc' key to terminate" << endl;
 
-    for (;;)
+    while (true)
     {
         // wait for a new frame from camera and store it into 'frame'
         cap.read(frame);
@@ -56,7 +56,7 @@ int main(int, char **)
         {
             if (detect(frame, .5, bbox, net))
             {
-                tracker = TrackerKCF::create();
+                tracker = TrackerMedianFlow::create();
                 tracker->init(frame, bbox);
             }
         }
@@ -65,7 +65,7 @@ int main(int, char **)
             bbox = Rect2d(0, 0, 0, 0);
         }
 
-        rectangle(frame, bbox, Scalar(255, 0, 0), 2, 1);
+        rectangle(frame, bbox, Scalar(255, 0, 0), 3, 1);
         // show live and wait for 'esc' key with timeout long enough to show images
         imshow("Live Feed", frame);
         if (waitKey(5) == 27)
@@ -75,9 +75,14 @@ int main(int, char **)
     return 0;
 }
 
-bool detect(Mat &frame, double conf, Rect2d &bbox, Net &net)
+bool detect(Mat &frame, float conf, Rect2d &bbox, Net &net)
 {
-    double confidence;
+    double x;
+    double y;
+    double width;
+    double height;
+
+    float confidence = 0;
     Mat blob = blobFromImage(frame, 1.0, Size(300, 300), Scalar(104, 117, 123), false, false);
 
     net.setInput(blob, "data");
@@ -86,18 +91,25 @@ bool detect(Mat &frame, double conf, Rect2d &bbox, Net &net)
 
     for (int i = 0; i < detections.rows; i++)
     {
-        float confidence = detections.at<float>(i, 2);
+        float _confidence = detections.at<float>(i, 2);
 
-        if (confidence > conf)
+        if (_confidence > confidence)
         {
-            int x1 = static_cast<int>(detections.at<float>(i, 3) * frame.cols);
-            int y1 = static_cast<int>(detections.at<float>(i, 4) * frame.rows);
+            x = static_cast<int>(detections.at<float>(i, 3) * frame.cols);
+            y = static_cast<int>(detections.at<float>(i, 4) * frame.rows);
             int x2 = static_cast<int>(detections.at<float>(i, 5) * frame.cols);
             int y2 = static_cast<int>(detections.at<float>(i, 6) * frame.rows);
 
-            bbox = Rect2d(x1, y1, x2 - x1, y2 - y1);
-            return true;
+            width = x2 - x;
+            height = y2 - y;
+            confidence = _confidence;
         }
+    }
+
+    if (confidence > conf)
+    {
+        bbox = Rect2d(x, y, width, height);
+        return true;
     }
 
     return false;
