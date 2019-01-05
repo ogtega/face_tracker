@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include <opencv2/dnn.hpp>
+#include <opencv2/core/ocl.hpp>
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/videoio.hpp>
@@ -52,6 +53,8 @@ int main(int, char **)
             break;
         }
 
+        double timer = (double)getTickCount();
+
         if (bbox.area() <= 0)
         {
             if (detect(frame, .5, bbox, net))
@@ -65,7 +68,10 @@ int main(int, char **)
             bbox = Rect2d(0, 0, 0, 0);
         }
 
+        float fps = getTickFrequency() / ((double)getTickCount() - timer);
+
         rectangle(frame, bbox, Scalar(255, 0, 0), 3, 1);
+        putText(frame, "FPS : " + to_string(int(fps)), Point(10, 50), FONT_HERSHEY_SIMPLEX, 0.75, Scalar(50, 170, 50), 2);
         // show live and wait for 'esc' key with timeout long enough to show images
         imshow("Live Feed", frame);
         if (waitKey(5) == 27)
